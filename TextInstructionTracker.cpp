@@ -80,7 +80,8 @@ int main(int argc, char * argv[]){
 	}
 	
 	ifstream fp;
-	fp.open(argv[12]);
+	//Huge issue between versions, they change the command line args
+	fp.open(argv[6]);
 
 	//Check if file was found
 	if(!fp.is_open()){
@@ -91,7 +92,7 @@ int main(int argc, char * argv[]){
 		cout << "Opened " << argv[12] << endl;
 	}
 
-	char elfArch;
+	char elfArch = '\x00';
 	//Move to elfs header to determine arch 
 	fp.seekg(0x4);	
 	if(!fp.get(elfArch)){
