@@ -11,18 +11,20 @@ unsigned long long e_shoff;
 unsigned short e_shstrndx;
 unsigned short e_shnum;
 unsigned short e_shentsize;
-
+ADDRINT mainLowAddr;
 unsigned long long maxTextAddress;
 unsigned long long minTextAddress;
 
+KNOB<string> KnobOutputFile(KNOB_MODE_WRITEONCE, "pintool", "o", "", "specify file name");
+
 VOID RecordMemRead(ADDRINT ip, VOID * addr){
-	if(ip >= (ADDRINT)minTextAddress && ip <= (ADDRINT)maxTextAddress){
+	if(ip >= (mainLowAddr + (ADDRINT)minTextAddress) && ip <= (mainLowAddr + (ADDRINT)maxTextAddress)){
 		
 		fprintf(trace, ": R %p \n",addr);
 	}
 }
 VOID RecordMemWrite(ADDRINT ip, VOID * addr){
-	if(ip >= (ADDRINT)minTextAddress && ip <= (ADDRINT)maxTextAddress){
+	if(ip >= (mainLowAddr + (ADDRINT)minTextAddress) && ip <= (mainLowAddr + (ADDRINT)maxTextAddress)){
 		
 		fprintf(trace, ": W %p \n",addr);
 	}
@@ -30,7 +32,7 @@ VOID RecordMemWrite(ADDRINT ip, VOID * addr){
 
 
 VOID Instruction(INS ins, VOID *v){
-	if(INS_Address(ins) >= (ADDRINT)minTextAddress && INS_Address(ins) <= (ADDRINT)maxTextAddress){
+	if(INS_Address(ins) >= (mainLowAddr + (ADDRINT)minTextAddress) && INS_Address(ins) <= (mainLowAddr + (ADDRINT)maxTextAddress)){
 		fprintf(trace, "%lx\n : %s\n",INS_Address(ins),INS_Disassemble(ins).c_str());
 	}
 	//INS_InsertCall(ins,IPOINT_BEFORE,(AFUNPTR)writeIp,IARG_INST_PTR,IARG_END);
@@ -55,7 +57,13 @@ VOID Fini(INT32 code, VOID *v){
 	fprintf(trace, "#eof\n");
 	fclose(trace);
 }
-
+VOID ImageLoad(IMG img, VOID *v){
+	if(IMG_IsMainExecutable(img)){
+		mainLowAddr = IMG_LowAddress(img);
+		cout << ".text Low Address is" << hex << mainLowAddr < endl;
+	}
+}
+	
 INT32 Usage(){
 	PIN_ERROR(".text instruction tracker\n" + KNOB_BASE::StringKnobSummary() + "\n");
 	return -1;
@@ -212,8 +220,12 @@ int main(int argc, char * argv[]){
 
 	printf("Range .text : 0x%llx - 0x%llx\n",minTextAddress,maxTextAddress);
 	
-	
+	ofstream outFile;
+	if(!KnobOutputFile.Value().empty()){
+		outFile.open(KnobOutputFile.Value().c_str());
+	}	
 	INS_AddInstrumentFunction(Instruction,0);
+	IMG_AddInstrumentFunction(ImageLoad, (KnobOoutputFile.Value().empty()) ? &cout : &outFile);
 	PIN_AddFiniFunction(Fini,0);
 	PIN_StartProgram();
 	return 0;
