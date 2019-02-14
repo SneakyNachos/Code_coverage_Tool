@@ -88,8 +88,7 @@ int main(int argc, char * argv[]){
 	}
 	
 	ifstream fp;
-	//Huge issue between versions, they change the command line args
-	fp.open(argv[6]);
+	fp.open(argv[argc-1]);
 
 	//Check if file was found
 	if(!fp.is_open()){
